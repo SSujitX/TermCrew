@@ -1,0 +1,15 @@
+# Rust
+**/target/
+**/*.rs.bk
+Cargo.lock
+
+# Multi-agent worktrees
+.worktrees/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.log
+Thumbs.db
+.DS_Store
