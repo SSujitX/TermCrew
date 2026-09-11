@@ -11,6 +11,7 @@
     restartSession,
     broadcastMessage,
     handoffReview,
+    renameSession,
     renameSessionGroup,
   } from './lib/api';
   import LauncherModal from './lib/components/LauncherModal.svelte';
@@ -191,7 +192,7 @@
       if (!sessions.some((s) => s.id === added.id)) {
         sessions = [...sessions, added];
       }
-      focusedSessionId = added.id;
+      selectSession(added.id);
       showToast(`Added ${added.role ?? added.name}.`, 'success');
     } catch (err) {
       showToast(errorMessage(err), 'error');
@@ -243,6 +244,16 @@
       sessions = sessions.map((s) =>
         (s.group_id || s.id) === groupId ? { ...s, group_label: next } : s
       );
+      showToast(`Renamed to ${next}.`, 'success');
+    } catch (err) {
+      showToast(errorMessage(err), 'error');
+    }
+  }
+
+  async function handleRenameNode(sessionId: string, label: string) {
+    try {
+      const next = await renameSession(sessionId, label);
+      sessions = sessions.map((s) => (s.id === sessionId ? { ...s, label: next } : s));
       showToast(`Renamed to ${next}.`, 'success');
     } catch (err) {
       showToast(errorMessage(err), 'error');
@@ -505,6 +516,7 @@
       onKillSession={requestKillSession}
       onKillGroup={requestKillGroup}
       onRenameGroup={handleRenameGroup}
+      onRenameNode={handleRenameNode}
       onOpenLauncher={() => openLauncher()}
       onOpenFile={openFile}
       onDeleted={(p) => {
