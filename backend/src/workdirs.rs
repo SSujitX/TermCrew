@@ -84,11 +84,6 @@ fn try_raise_picker(_title: &str) -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(not(any(windows, target_os = "macos")))]
-fn try_raise_picker(_title: &str) -> bool {
-    false
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecentWorkdir {
     pub path: String,
