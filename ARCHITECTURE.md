@@ -121,6 +121,7 @@ pub struct SessionInfo {
     pub engine: String,        // agent id or shell id ("claude", "shell", "git-bash", …)
     pub preset: String,        // "Solo" | "Pair" | "Workbench" | "Swarm" | "Setup"
     pub role: Option<String>,  // "Lead", "Review 2", "Agent", "Shell", "Worker 3", …
+    #[serde(default)] pub label: Option<String>, // sidebar/strip display; UI falls back to role
     pub working_dir: String,
     pub worktree_path: Option<String>,
     pub created_at: String,    // RFC 3339 (chrono Utc)
@@ -172,6 +173,8 @@ Global side state: a process-wide `HashSet<String>` of session ids currently ins
 **Add pane** (`add_to_group`): one new PTY in an existing group (cap 6). Same folder as the group (Swarm: new worktree). Pair → `Review n`, Solo → `Lead n`, Workbench → `Agent n` / `Shell`, Swarm → `Worker n`. Other sessions are not restarted. Setup groups refused.
 
 **Rename** (`rename_group`): trims label, max 80 chars, applies to every session with that `group_id`, persists.
+
+**Rename node** (`rename_session`): trims display `label`, max 80 chars, one session. Does not change `role`. Hidden setup consoles refused. Persists.
 
 **Setup consoles** (`launch_agent_setup`, `launch_command_setup`): spawn a hidden `Setup` preset shell (24 × 100). `launch_agent_setup` builds an OS-specific script from `registry::agent_lifecycle` (install/update/uninstall) that refreshes PATH, verifies the binary, and prints a sentinel `__MA_SETUP__:ok` / `__MA_SETUP__:fail`. Uninstall also kills live panes of that engine, then after the vendor command force-removes leftover `~/.local/share|cache|config|state/<binary>` trees and known shims (Windows `Stop-Process` + `rd /s /q` on EBUSY; Unix `pkill -x` + `rm -rf`). On Windows the script is written to a temp `.ps1` and run with `powershell -NoLogo -NoProfile -NoExit -ExecutionPolicy Bypass -File …` (avoids Defender flagging inline `-Command`). `launch_command_setup` runs a caller-provided command (≤ 4000 chars) the same way; it is used by the skills marketplace installer and git skill install.
 
@@ -373,6 +376,7 @@ All routes are under the CORS layer; bodies and responses are JSON. Errors are `
 | POST | `/api/sessions/add` | `{ group_id, engine }` | `{ session }` | 400 |
 | POST | `/api/sessions/:id/kill` | — | `{ success, session_id }` | 404 |
 | POST | `/api/sessions/:id/restart` | — | `{ success, session }` | 404 |
+| POST | `/api/sessions/:id/rename` | `{ label }` | `{ success, label }` | 400/404 |
 | POST | `/api/sessions/handoff` | `{ source_session_id, target_session_id }` | `{ success }` | 400 |
 | POST | `/api/sessions/broadcast` | `{ input, session_ids? }` | `{ success, delivered_count }` | 500 |
 | POST | `/api/sessions/rename` | `{ group_id, label }` | `{ success, label }` | 400 |
@@ -414,7 +418,7 @@ Layout: 56 px header (brand, running/total badge, Agents / Skills / Goals) · 24
 | `TerminalGrid` | empty state, session + file strip, One/Split, CSS grid, maximize; file overlay | — |
 | `TerminalPane` | one xterm (WebGL → Canvas → DOM), fit/resize, status, agent mark + short name + role (not `Builder · agy [Builder]`), abbreviated path (click copies), copy, send review, clear, restart, kill | WS |
 | `SetupTerminal` | embedded xterm for hidden setup consoles; `OP_SETUP` → rescan | WS only |
-| `Sidebar` | Sessions tab (groups, agent marks on nodes, rename, kill) / Files tab (abbreviated workdir + copy + open, `FileTree`), storage footer | `getStorageInfo`, `openStorageFolder`, `openFolder` |
+| `Sidebar` | Sessions tab (groups, agent marks on nodes, group + node rename, kill) / Files tab (abbreviated workdir + copy + open, `FileTree`), storage footer | `getStorageInfo`, `openStorageFolder`, `openFolder` |
 | `FileTree` | lazy directory tree | `listDir` |
 | `FileEditor` | Monaco overlay, per-tab models, dirty, Ctrl+S mtime conflict, Esc | `readFile`, `writeFile` |
 | `LauncherModal` | ~720 px; folder, then 4-across presets, count stepper (1–6, above agents on Solo/Swarm), ordered agent picker, task | `getRecentWorkdirs`, `browseDirs`, `pickFolderNative` |
