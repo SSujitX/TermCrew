@@ -17,7 +17,7 @@ It is a **multi-agent terminal**: one browser window, a grid of live panes, and 
 
 No cloud control plane. The API binds `127.0.0.1:3001`. The UI is `http://localhost:5173`.
 
-**[Install →](#install)**
+**[Install →](#install)** · **[Contributing](CONTRIBUTING.md)**
 
 <div align="center">
 
@@ -304,6 +304,10 @@ The PTY stack is Unix-capable, but v1.0.0 is documented and tested for Windows a
 MIT. See [LICENSE](LICENSE).
 
 ---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
