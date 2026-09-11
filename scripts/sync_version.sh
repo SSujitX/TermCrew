@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Keep backend/Cargo.toml, frontend/package.json, and the README
-# "Last updated · vX.Y.Z" line on the root VERSION (set by the Release workflow).
+# Keep backend/Cargo.toml and frontend/package.json on the root VERSION.
 # Usage:
 #   ./scripts/sync_version.sh           # write versions from VERSION
 #   ./scripts/sync_version.sh check     # exit 1 if any file drifts
@@ -22,15 +21,6 @@ read_cargo_version() {
 
 read_frontend_version() {
   node -p "require('./frontend/package.json').version"
-}
-
-read_readme_version() {
-  awk '/Last updated:/ {
-    if (match($0, /v[0-9]+\.[0-9]+\.[0-9]+/)) {
-      print substr($0, RSTART + 1, RLENGTH - 1)
-      exit
-    }
-  }' README.md
 }
 
 write_cargo_version() {
@@ -56,15 +46,6 @@ write_frontend_version() {
   ' "$ver"
 }
 
-write_readme_version() {
-  local ver="$1"
-  awk -v ver="$ver" '
-    /Last updated:/ { sub(/· v[0-9]+\.[0-9]+\.[0-9]+/, "· v" ver) }
-    { print }
-  ' README.md > README.md.tmp
-  mv README.md.tmp README.md
-}
-
 mode="${1:-sync}"
 
 if [[ "$mode" == "check" ]]; then
@@ -77,11 +58,6 @@ if [[ "$mode" == "check" ]]; then
   pkg_ver="$(read_frontend_version)"
   if [[ "$pkg_ver" != "$VERSION" ]]; then
     echo "frontend/package.json is $pkg_ver, expected $VERSION" >&2
-    ok=0
-  fi
-  readme_ver="$(read_readme_version)"
-  if [[ "$readme_ver" != "$VERSION" ]]; then
-    echo "README.md last-updated is v$readme_ver, expected v$VERSION" >&2
     ok=0
   fi
   if [[ "$ok" -ne 1 ]]; then
@@ -99,6 +75,5 @@ fi
 echo "Syncing product version $VERSION"
 write_cargo_version "$VERSION"
 write_frontend_version "$VERSION"
-write_readme_version "$VERSION"
 echo "Done: package files now at $VERSION"
 bash ./scripts/sync_version.sh check
