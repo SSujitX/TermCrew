@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Session } from '../types';
+  import { nodeName, type Session } from '../types';
   import { broadcastMessage, handoffReview } from '../api';
   import {
     detectTestCommand,
@@ -63,7 +63,7 @@
         if (!line) continue;
         await broadcastMessage(line, [s.id]);
         sent += 1;
-        stamp(`${s.role ?? s.name}: ${laneOf(s)}`);
+        stamp(`${nodeName(s)}: ${laneOf(s)}`);
       }
       if (sent === 0) {
         onToast('Nothing to send — only a shell is running. Launch an agent.', 'error');
@@ -187,7 +187,7 @@
             {#each sessions as s (s.id)}
               {@const lane = laneOf(s)}
               <div class="flex items-center justify-between gap-2 p-2 rounded-sm bg-ink-850 border border-line text-xs">
-                <span class="font-mono text-bone truncate">{s.role ?? s.name}</span>
+                <span class="font-mono text-bone truncate">{nodeName(s)}</span>
                 <span class="flex items-center gap-1.5 flex-shrink-0">
                   <span class={badge({ variant: lane === 'review' ? 'warning' : lane === 'shell' ? 'default' : 'success' })}>
                     {lane}
