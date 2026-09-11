@@ -1,0 +1,27 @@
+---
+description: After any code change, rebuild and rerun the local backend and frontend so the user can use the latest build.
+alwaysApply: true
+---
+
+# Rebuild and rerun after changes
+
+When you change project files, do not leave stale processes running. Bring the app back up on the latest build before you finish.
+
+## What to restart
+
+- **Backend (`backend/**`, `Cargo.toml`, `Cargo.lock`)**: Windows locks `termcrew.exe`. Stop `termcrew` (and any `cargo run` on :3001), then `cargo run` from `backend/`. Wait until the log shows `Server listening on http://127.0.0.1:3001`.
+- **Frontend (`frontend/**` except lockfile-only)**: Vite HMR is enough for Svelte/TS/CSS. Restart `bun run dev` from `frontend/` only if you changed `vite.config.ts`, `svelte.config.js`, or `package.json`, or if :5173 is down.
+- **Both**: if you touched both sides, restart backend first, then ensure Vite is on :5173.
+
+## How
+
+1. Check :3001 and :5173. If a rebuild needs the exe, `Stop-Process -Name termcrew -Force` (ignore if missing).
+2. Start missing servers in the background. Do not use `run-dev.ps1` from the agent (it opens extra windows and blocks).
+3. Confirm listen logs (or a successful `GET http://127.0.0.1:3001/api/sessions`).
+4. Tell the user to use http://localhost:5173 (hard-refresh if the PTY/WebSocket protocol changed).
+
+## Do not
+
+- Skip restart after backend edits because "HMR will handle it".
+- Start a second `cargo run` while the old `termcrew.exe` still holds the port.
+- Claim the app is running without a fresh listen/log check.
