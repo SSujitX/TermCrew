@@ -1,5 +1,11 @@
+pub mod file_editor;
+pub mod persist;
+pub mod proc_guard;
 pub mod pty_manager;
+pub mod pty_wire;
 pub mod registry;
 pub mod session;
+pub mod skills;
+pub mod workdirs;
 pub mod worktree;
 pub mod ws_handler;
