@@ -343,7 +343,7 @@ Operations and guards:
 - `PUT /api/fs/file` `{ path, content, expected_modified_ms? }` — only writes files that already exist (no create); rejects oversized or binary-looking content; if `expected_modified_ms` is set and the file's mtime differs, refuses with the message "This file changed on disk since you opened it…". The handler maps every error to **409 Conflict**. Returns `{ path, modified_ms }`.
 - `POST /api/fs/create` `{ root, rel_path, kind: file\|dir }` — creates under `root` (session tree). `rel_path` may nest (`src/lib/util.ts`); parents are created; `..`, absolute paths, and names with `<>:"|?*` are rejected. Existing paths fail. Returns `{ path, kind }`.
 - `POST /api/fs/delete` `{ root, path }` — deletes a file or folder strictly inside `root`. Refuses the root itself and paths outside it.
-- `POST /api/fs/pick-folder` — native OS folder dialog via `rfd` (Explorer / Finder / XDG portal); `{ path: null }` on cancel. The backend raises that dialog above the browser (Windows: TOPMOST + foreground steal; macOS: System Events `frontmost`).
+- `POST /api/fs/pick-folder` — native OS folder dialog via `rfd` (Explorer / Finder). Linux returns an error (type the path). `{ path: null }` on cancel. The backend raises that dialog above the browser (Windows: TOPMOST + foreground steal; macOS: System Events `frontmost`).
 - `POST /api/fs/open` `{ path }` — opens that folder in Explorer (Windows) / Finder (macOS) / xdg-open (Linux).
 
 None of these endpoints constrain paths to the workspace; they trust the local operator (see §6).
