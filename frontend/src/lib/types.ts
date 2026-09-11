@@ -1,5 +1,12 @@
 export type PresetType = 'solo' | 'pair' | 'workbench' | 'swarm';
 
+/** Pane chip / sidebar row: custom label, else role, else raw name. */
+export function nodeName(s: Pick<Session, 'label' | 'role' | 'name'>): string {
+  const custom = s.label?.trim();
+  if (custom) return custom;
+  return s.role?.trim() || s.name;
+}
+
 export interface AgentMeta {
   id: string;
   name: string;
@@ -28,6 +35,8 @@ export interface Session {
   created_at: string;
   exit_code?: number;
   role?: string;
+  /** Sidebar/strip display name. When unset, the UI shows `role` (then `name`). */
+  label?: string;
   /** Launch group — all nodes from one New Session share this. */
   group_id: string;
   /** e.g. "Pair 1" */
