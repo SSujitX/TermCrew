@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AgentMeta, Session } from '../types';
+  import { nodeName, type AgentMeta, type Session } from '../types';
   import TerminalPane from './TerminalPane.svelte';
   import FileEditor from './FileEditor.svelte';
   import AgentMark from './AgentMark.svelte';
@@ -52,20 +52,32 @@
   let maximizedSessionId = $state<string | null>(null);
   let viewMode = $state<'grid' | 'tabs'>('grid');
   let lastGroupKey = $state('');
+  let lastCount = $state(0);
   let addOpen = $state(false);
 
   let readyAgents = $derived(agents.filter((a) => a.is_installed));
   let canAdd = $derived(sessions.length > 0 && sessions.length < 6 && !!onAddEngine);
 
-  // Reset layout only when switching groups — adding/killing a pane must not remount PTYs.
+  // Reset layout when switching groups. Adding a pane must flip to Split so
+  // the new PTY is not left `invisible` behind One-mode stacking.
   $effect(() => {
     const key = sessions[0]?.group_id ?? '';
+    const count = sessions.length;
     if (key !== lastGroupKey) {
       lastGroupKey = key;
-      viewMode = sessions.length > 1 ? 'grid' : 'tabs';
+      viewMode = count > 1 ? 'grid' : 'tabs';
       maximizedSessionId = null;
       addOpen = false;
+      lastCount = count;
+      return;
     }
+    if (count > lastCount && count > 1) {
+      viewMode = 'grid';
+      maximizedSessionId = null;
+    } else if (count <= 1 && lastCount > 1) {
+      viewMode = 'tabs';
+    }
+    lastCount = count;
   });
 
   $effect(() => {
@@ -119,7 +131,7 @@
     </div>
   {:else}
     <!-- Always-visible session switcher strip -->
-    <div class="h-10 px-2 bg-ink-900 border-b border-line-strong flex items-stretch gap-2 flex-shrink-0 z-10">
+    <div class="h-10 px-2 bg-ink-900 border-b border-line-strong flex items-stretch gap-2 flex-shrink-0 z-20">
       <div class="flex-1 flex items-stretch gap-0 overflow-x-auto no-scrollbar min-w-0">
         {#each sessions as s (s.id)}
           {@const sessionOn = activeId === s.id && !activeFile}
@@ -142,7 +154,7 @@
                   ? 'bg-phosphor pulse-glow'
                   : 'bg-ink-600'}"
               ></span>
-              <span class="max-w-[140px] truncate">{s.role ?? s.name}</span>
+              <span class="max-w-[140px] truncate">{nodeName(s)}</span>
               {#if s.group_label}
                 <span class="text-[9px] text-dim truncate max-w-[100px] hidden md:inline">{s.group_label.split(' · ')[0]}</span>
               {/if}
@@ -207,7 +219,7 @@
             </button>
             {#if addOpen}
               <div
-                class="absolute right-0 top-full mt-1 z-40 w-56 max-h-64 overflow-y-auto rounded-sm border border-line-strong bg-ink-900 py-1 shadow-lg"
+                class="absolute right-0 top-full mt-1 z-50 w-56 max-h-64 overflow-y-auto rounded-sm border border-line-strong bg-ink-900 py-1 shadow-lg"
               >
                 {#if readyAgents.length === 0}
                   <p class="px-3 py-2 text-[10px] font-mono text-dim">No installed agents.</p>
@@ -268,7 +280,7 @@
     </div>
 
     {@const stacked = viewMode !== 'grid' || maximizedSessionId != null}
-    <div class="flex-1 p-3 overflow-hidden relative">
+    <div class="flex-1 p-3 overflow-hidden relative z-0">
       <div
         class={stacked ? 'contents' : `grid ${gridLayoutClass} gap-3 h-full w-full`}
       >
