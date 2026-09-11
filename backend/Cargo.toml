@@ -16,10 +16,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 which = "7.0"
 chrono = { version = "0.4", features = ["serde"] }
 futures-util = "0.3"
-# Native OS folder-picker dialog (Explorer / Finder). Portal backend keeps
-# Linux builds dependency-light; Windows and macOS use their native APIs.
-rfd = { version = "0.15", default-features = false, features = ["xdg-portal"] }
-
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
     "Win32_Foundation",
@@ -33,3 +29,7 @@ windows = { version = "0.62", features = [
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+# Explorer / Finder only — skip on Linux so CI does not need Wayland/GTK.
+[target.'cfg(any(windows, target_os = "macos"))'.dependencies]
+rfd = "0.15"
