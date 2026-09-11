@@ -1,6 +1,6 @@
 use termcrew::session::{
     self, park_all_sessions, AgentSetupRequest, AppState, BroadcastRequest, LaunchRequest,
-    RenameGroupRequest,
+    RenameGroupRequest, RenameSessionRequest,
 };
 use termcrew::ws_handler::ws_handler;
 use termcrew::{file_editor, persist, registry, skills, workdirs, worktree};
@@ -119,6 +119,7 @@ async fn main() {
         .route("/api/sessions/add", post(handle_add_to_group))
         .route("/api/sessions/:id/kill", post(handle_kill_session))
         .route("/api/sessions/:id/restart", post(handle_restart_session))
+        .route("/api/sessions/:id/rename", post(handle_rename_session))
         .route("/api/sessions/handoff", post(handle_handoff_review))
         .route("/api/sessions/broadcast", post(handle_broadcast_input))
         .route("/api/sessions/rename", post(handle_rename_group))
@@ -484,6 +485,28 @@ async fn handle_handoff_review(
             StatusCode::BAD_REQUEST,
             Json(json!({ "success": false, "error": e })),
         ),
+    }
+}
+
+/// POST /api/sessions/:id/rename - Renames one pane's display label
+async fn handle_rename_session(
+    State(state): State<AppState>,
+    AxPath(id): AxPath<String>,
+    Json(req): Json<RenameSessionRequest>,
+) -> impl IntoResponse {
+    match session::rename_session(&state, &id, &req.label).await {
+        Ok(label) => (
+            StatusCode::OK,
+            Json(json!({ "success": true, "label": label })),
+        ),
+        Err(e) => {
+            let code = if e.contains("not found") {
+                StatusCode::NOT_FOUND
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            (code, Json(json!({ "success": false, "error": e })))
+        }
     }
 }
 
