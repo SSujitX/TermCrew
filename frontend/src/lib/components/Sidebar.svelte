@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AgentMeta, Session } from '../types';
+  import { nodeName, type AgentMeta, type Session } from '../types';
   import { cn, displayHomePath } from '../ui';
   import { X, Plus, ChevronRight, ChevronDown, Pencil, FolderOpen } from 'lucide-svelte';
   import FileTree from './FileTree.svelte';
@@ -22,6 +22,7 @@
     onKillSession: (id: string) => void;
     onKillGroup: (groupId: string) => void;
     onRenameGroup: (groupId: string, label: string) => void;
+    onRenameNode?: (sessionId: string, label: string) => void;
     onOpenLauncher: () => void;
   }
 
@@ -46,6 +47,7 @@
     onKillSession,
     onKillGroup,
     onRenameGroup,
+    onRenameNode,
     onOpenLauncher,
   }: Props = $props();
 
@@ -54,6 +56,7 @@
   let collapsed = $state<Record<string, boolean>>({});
   let lastOpenedGroupId = $state<string | null>(null);
   let renamingId = $state<string | null>(null);
+  let renamingNodeId = $state<string | null>(null);
   let renameDraft = $state('');
   let storageRoot = $state('');
   let storageBusy = $state(false);
@@ -130,8 +133,7 @@
   }
 
   function nodeLabel(s: Session): string {
-    if (s.role) return s.role;
-    return s.name;
+    return nodeName(s);
   }
 
   function sessionDir(s: Session): string {
@@ -163,8 +165,18 @@
   function startRename(group: SessionGroup, e?: MouseEvent) {
     e?.preventDefault();
     e?.stopPropagation();
+    renamingNodeId = null;
     renamingId = group.id;
     renameDraft = group.label;
+  }
+
+  function startRenameNode(session: Session, e?: MouseEvent) {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!onRenameNode) return;
+    renamingId = null;
+    renamingNodeId = session.id;
+    renameDraft = nodeLabel(session);
   }
 
   function commitRename(groupId: string) {
@@ -176,8 +188,18 @@
     onRenameGroup(groupId, next);
   }
 
+  function commitNodeRename(sessionId: string) {
+    const next = renameDraft.trim();
+    renamingNodeId = null;
+    if (!next || !onRenameNode) return;
+    const current = sessions.find((s) => s.id === sessionId);
+    if (current && nodeLabel(current) === next) return;
+    onRenameNode(sessionId, next);
+  }
+
   function cancelRename() {
     renamingId = null;
+    renamingNodeId = null;
     renameDraft = '';
   }
 
@@ -346,7 +368,8 @@
                       type="button"
                       class="absolute inset-0 z-0 rounded-sm"
                       onclick={() => onSelectSession(session.id)}
-                      aria-label="Select {session.name}"
+                      ondblclick={(e) => startRenameNode(session, e)}
+                      aria-label="Select {nodeLabel(session)}"
                     ></button>
                     <span
                       class={cn(
@@ -362,9 +385,35 @@
                         size="xs"
                       />
                     </span>
-                    <span class="relative z-10 flex-1 min-w-0 text-[10px] font-mono text-bone truncate leading-none pointer-events-none" title={sessionDir(session)}>
-                      {nodeLabel(session)}
-                    </span>
+                    {#if renamingNodeId === session.id}
+                      <input
+                        type="text"
+                        bind:value={renameDraft}
+                        class="relative z-10 flex-1 min-w-0 h-5 px-1 bg-ink-950 border border-phosphor/50 rounded-sm text-[10px] font-mono text-bone focus:outline-none"
+                        onkeydown={(e) => {
+                          if (e.key === 'Enter') commitNodeRename(session.id);
+                          if (e.key === 'Escape') cancelRename();
+                        }}
+                        onblur={() => commitNodeRename(session.id)}
+                        onclick={(e) => e.stopPropagation()}
+                        use:focusOnMount
+                      />
+                    {:else}
+                      <span class="relative z-10 flex-1 min-w-0 text-[10px] font-mono text-bone truncate leading-none pointer-events-none" title={sessionDir(session)}>
+                        {nodeLabel(session)}
+                      </span>
+                      {#if onRenameNode}
+                        <button
+                          type="button"
+                          onclick={(e) => startRenameNode(session, e)}
+                          class="relative z-10 opacity-0 group-hover:opacity-100 flex-shrink-0 h-5 w-5 flex items-center justify-center rounded-sm text-fog hover:text-phosphor hover:bg-ink-850 transition-opacity"
+                          title="Rename node"
+                          aria-label="Rename {nodeLabel(session)}"
+                        >
+                          <Pencil class="w-2.5 h-2.5" />
+                        </button>
+                      {/if}
+                    {/if}
                     <button
                       type="button"
                       onclick={(e) => {
@@ -373,7 +422,7 @@
                       }}
                       class="relative z-10 opacity-0 group-hover:opacity-100 flex-shrink-0 h-5 w-5 flex items-center justify-center rounded-sm text-fog hover:text-alert hover:bg-alert/10 transition-opacity"
                       title="Close node"
-                      aria-label="Close {session.name}"
+                      aria-label="Close {nodeLabel(session)}"
                     >
                       <X class="w-2.5 h-2.5" />
                     </button>
