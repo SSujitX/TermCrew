@@ -296,11 +296,6 @@
     <div class="flex items-center gap-2 truncate flex-1 min-w-0">
       <AgentMark id={session.engine} name={agentLabel} installed={true} size="xs" />
       <span class="font-mono text-xs font-semibold text-bone truncate">{agentLabel}</span>
-      {#if session.role}
-        <span class="eyebrow text-[9px] px-1.5 py-0.5 border border-phosphor/30 bg-phosphor/5 flex-shrink-0">
-          {session.role}
-        </span>
-      {/if}
       {#if sessionDir}
         <button
           type="button"
