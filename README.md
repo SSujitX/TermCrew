@@ -5,6 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-111111)](#install-and-run)
 [![Local](https://img.shields.io/badge/mode-local%20first-2ea44f)](#what-is-termcrew)
 [![Version](https://img.shields.io/badge/version-1.0.0-informational)](VERSION)
+[![GitHub](https://img.shields.io/badge/github-SSujitX%2FTermCrew-181717?logo=github)](https://github.com/SSujitX/TermCrew)
 
 **TermCrew** is a local web console for running many AI coding CLIs at once — real terminals, real PTYs, your repo, your machine.
 
@@ -132,7 +133,12 @@ Add a pane later with **+** on the tab strip (installed agents and shells only, 
 
 **Requirements:** [Rust](https://rustup.rs) (stable), [Bun](https://bun.com) 1.4+, [Git](https://git-scm.com). **Windows 10/11** or **macOS**. A browser with WebGL is preferred (Canvas fallback is automatic).
 
-Clone the repo, then start both processes. First `cargo run` compiles the backend and can take a few minutes.
+```bash
+git clone https://github.com/SSujitX/TermCrew.git
+cd TermCrew
+```
+
+Then start both processes. First `cargo run` compiles the backend and can take a few minutes.
 
 ### Windows
 
