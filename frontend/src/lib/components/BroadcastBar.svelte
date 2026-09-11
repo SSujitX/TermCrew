@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Session } from '../types';
+  import { nodeName, type Session } from '../types';
   import { Send, Check, Trash2, Eraser, ChevronUp } from 'lucide-svelte';
   import { btn } from '../ui';
 
@@ -42,7 +42,7 @@
       groupSessions[0]?.group_label?.split(' · ')[0] ??
       'Session'
   );
-  let nodeLabel = $derived(activeSession?.role ?? activeSession?.name ?? 'selected');
+  let nodeLabel = $derived(activeSession ? nodeName(activeSession) : 'selected');
   let hasSession = $derived(Boolean(activeSession) || groupIds.length > 0);
   let canSend = $derived(target === 'all' ? groupIds.length > 0 : Boolean(activeSession));
 
