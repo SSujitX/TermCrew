@@ -18,6 +18,7 @@ interface BackendSessionInfo {
   engine: string;
   preset: string;
   role?: string | null;
+  label?: string | null;
   working_dir: string;
   worktree_path?: string | null;
   created_at: string;
@@ -59,6 +60,7 @@ function mapSession(b: BackendSessionInfo): Session {
     status: b.is_alive ? 'running' : 'exited',
     created_at: b.created_at,
     role: b.role ?? undefined,
+    label: b.label?.trim() || undefined,
     group_id,
     group_label,
     task: b.task?.trim() || undefined,
@@ -1051,6 +1053,25 @@ export async function restartSession(sessionId: string): Promise<Session> {
     throw new Error('Unexpected response from backend');
   }
   return mapSession(data.session as BackendSessionInfo);
+}
+
+export async function renameSession(sessionId: string, label: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/sessions/${encodeURIComponent(sessionId)}/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label }),
+    });
+  } catch (err) {
+    throw backendOfflineError(err);
+  }
+
+  const data = await readJson(res);
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Rename failed (HTTP ${res.status})`);
+  }
+  return data?.label ?? label;
 }
 
 export async function renameSessionGroup(groupId: string, label: string): Promise<string> {
