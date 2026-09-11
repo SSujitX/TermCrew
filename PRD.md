@@ -83,7 +83,7 @@ Requirement ids are stable; use them in issues and commit messages.
 | S-6 | **Swarm**: one `Worker n` per selected agent, or *N* copies (1–10) of a single agent, each in its own worktree; the task is suffixed with `[Worker n]`. |
 | S-7 | If any pane of a launch fails to start, the whole launch is rolled back (already-started panes killed, worktrees removed) and an actionable error is shown. |
 | S-8 | Launching an agent that is not installed fails with an error naming the missing binary. |
-| S-9 | Groups are labelled `{Preset} {n}` (e.g. `Pair 1`) and can be renamed (≤ 80 chars). |
+| S-9 | Groups are labelled `{Preset} {n}` (e.g. `Pair 1`) and can be renamed (≤ 80 chars). Nodes show `role` (`Lead`, `Review n`, …) and can be renamed the same way; the machine role is unchanged. |
 | S-10 | A session can be killed individually or with its whole group (with confirmation). Kill terminates the entire process tree and removes the session's worktree and persisted data. |
 | S-11 | A session can be restarted in place: same id, role, folder, worktree; the previous transcript is replayed followed by a `--- relaunched ---` marker. |
 | S-12 | Sessions persist across backend restarts as **parked** sessions: they appear in the sidebar, show their last transcript and a banner, and offer Restart. |
