@@ -5,36 +5,50 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+#[cfg(any(windows, target_os = "macos"))]
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::warn;
 
 const MAX_RECENTS: usize = 12;
 
 /// Only one native picker dialog may be open at a time.
+#[cfg(any(windows, target_os = "macos"))]
 static PICKER_BUSY: AtomicBool = AtomicBool::new(false);
 
-/// Opens a native OS folder-picker window (Explorer / Finder / portal) on
+/// Opens a native OS folder-picker window (Explorer / Finder) on
 /// the machine running the backend. `Ok(None)` means the user cancelled.
 ///
 /// The dialog is owned by `termcrew.exe`, not the browser, so Windows/macOS
 /// would otherwise leave it flashing in the taskbar. A short raise pass
 /// brings it in front of the browser.
 pub async fn pick_folder(title: &str) -> Result<Option<PathBuf>, String> {
-    if PICKER_BUSY
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_err()
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
-        return Err("A folder dialog is already open".to_string());
+        let _ = title;
+        return Err(
+            "Folder picker is not available on this OS. Type or browse the path in the launcher."
+                .into(),
+        );
     }
-    raise_picker_soon(title);
-    let picked = rfd::AsyncFileDialog::new()
-        .set_title(title)
-        .pick_folder()
-        .await;
-    PICKER_BUSY.store(false, Ordering::SeqCst);
-    Ok(picked.map(|handle| handle.path().to_path_buf()))
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        if PICKER_BUSY
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return Err("A folder dialog is already open".to_string());
+        }
+        raise_picker_soon(title);
+        let picked = rfd::AsyncFileDialog::new()
+            .set_title(title)
+            .pick_folder()
+            .await;
+        PICKER_BUSY.store(false, Ordering::SeqCst);
+        Ok(picked.map(|handle| handle.path().to_path_buf()))
+    }
 }
 
+#[cfg(any(windows, target_os = "macos"))]
 fn raise_picker_soon(title: &str) {
     let title = title.to_string();
     std::thread::spawn(move || {
