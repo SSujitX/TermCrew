@@ -17,7 +17,7 @@ It is a **multi-agent terminal**: one browser window, a grid of live panes, and 
 
 No cloud control plane. The API binds `127.0.0.1:3001`. The UI is `http://localhost:5173`.
 
-*Last updated: 12 September 2026 · v1.0.0*
+**[Install →](#install)**
 
 <div align="center">
 
@@ -197,7 +197,7 @@ Add a pane later with **+** on the tab strip (installed agents and shells only, 
 
 ---
 
-## Install and run
+## Install
 
 **Requirements:** [Rust](https://rustup.rs) (stable), [Bun](https://bun.com) 1.4+, [Git](https://git-scm.com). **Windows 10/11** or **macOS**. A browser with WebGL is preferred (Canvas fallback is automatic).
 
