@@ -20,6 +20,9 @@ pub struct SessionInfo {
     pub engine: String,
     pub preset: String,
     pub role: Option<String>,
+    /// Sidebar/strip display name. When unset, the UI shows `role` (then `name`).
+    #[serde(default)]
+    pub label: Option<String>,
     pub working_dir: String,
     pub worktree_path: Option<String>,
     pub created_at: String,
@@ -463,6 +466,7 @@ async fn spawn_single_session(
         engine: engine.to_string(),
         preset: preset.to_string(),
         role: role.map(|r| r.to_string()),
+        label: None,
         working_dir: cwd.to_string_lossy().to_string(),
         worktree_path: worktree_path.map(|p| p.to_string_lossy().to_string()),
         created_at: now_str,
@@ -1430,6 +1434,39 @@ pub async fn rename_group(
     Ok(trimmed.to_string())
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenameSessionRequest {
+    pub label: String,
+}
+
+fn normalize_node_label(label: &str) -> Result<String, String> {
+    let trimmed = label.trim();
+    if trimmed.is_empty() {
+        return Err("Node name cannot be empty".to_string());
+    }
+    if trimmed.len() > 80 {
+        return Err("Node name is too long".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Renames one pane's display label. Does not change `role` (playbook / add-pane).
+pub async fn rename_session(state: &AppState, id: &str, label: &str) -> Result<String, String> {
+    let trimmed = normalize_node_label(label)?;
+
+    let mut map = state.write().await;
+    let session = map
+        .get_mut(id)
+        .ok_or_else(|| format!("Session '{id}' not found"))?;
+    if session.info.hidden {
+        return Err("Cannot rename a setup console".to_string());
+    }
+    session.info.label = Some(trimmed.to_string());
+    persist::persist_info(&session.info);
+    info!(session_id = %id, label = %trimmed, "Renamed session node");
+    Ok(trimmed.to_string())
+}
+
 async fn kill_sessions_for_engine(state: &AppState, engine: &str) {
     let ids: Vec<String> = {
         let map = state.read().await;
@@ -1821,5 +1858,13 @@ mod tests {
     fn crew_label_is_preset_then_number() {
         assert_eq!(format_group_label(1, "Pair", "agy"), "Pair 1");
         assert_eq!(format_group_label(3, "Swarm", "shell"), "Swarm 3");
+    }
+
+    #[test]
+    fn node_label_trims_and_rejects_empty_or_long() {
+        assert_eq!(normalize_node_label("  Builder  ").unwrap(), "Builder");
+        assert!(normalize_node_label("").unwrap_err().contains("empty"));
+        assert!(normalize_node_label("   ").unwrap_err().contains("empty"));
+        assert!(normalize_node_label(&"x".repeat(81)).unwrap_err().contains("too long"));
     }
 }
