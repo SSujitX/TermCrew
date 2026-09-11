@@ -2,9 +2,47 @@
 
 PRs are welcome. For the code map and invariants, read [AGENTS.md](AGENTS.md) before you edit.
 
-## Run the app
+## Install
 
-See [Install](README.md#install). Backend: `127.0.0.1:3001`. UI: `http://localhost:5173`.
+**Requirements:** [Rust](https://rustup.rs) (stable), [Bun](https://bun.com) 1.4+, [Git](https://git-scm.com). **Windows 10/11** or **macOS**. A browser with WebGL is preferred (Canvas fallback is automatic).
+
+```bash
+git clone https://github.com/SSujitX/TermCrew.git
+cd TermCrew
+```
+
+Then start both processes. First `cargo run` compiles the backend and can take a few minutes.
+
+### Windows
+
+Double-click `start.bat`, or from PowerShell at the repo root:
+
+```powershell
+.\run-dev.ps1
+```
+
+`start.bat` opens two windows (backend + Vite). `run-dev.ps1` waits until `http://127.0.0.1:3001` answers, then starts the UI in that terminal.
+
+### macOS (and manual start on any OS)
+
+```bash
+# Terminal 1 — API + PTY bridge
+cd backend
+cargo run
+# wait for: Server listening on http://127.0.0.1:3001
+
+# Terminal 2 — UI
+cd frontend
+bun install
+bun run dev
+# → http://localhost:5173
+```
+
+Open **http://localhost:5173**. Hard-refresh if a backend protocol change landed while the tab was open.
+
+The backend is loopback-only. Do not expose `:3001` or widen CORS without adding authentication.
+
+## Checks
 
 ```bash
 # backend/
