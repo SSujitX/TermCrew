@@ -86,7 +86,8 @@ impl Drop for ProcessGuard {
     fn drop(&mut self) {
         // Windows: closing the job handle fires KILL_ON_JOB_CLOSE in the kernel.
         #[cfg(unix)]
-        if let GuardInner::Group { pgid } = &self.inner {
+        {
+            let GuardInner::Group { pgid } = &self.inner;
             // Tear-down path: no SIGTERM grace period, just reap the group.
             unsafe {
                 libc::kill(-*pgid, libc::SIGKILL);
