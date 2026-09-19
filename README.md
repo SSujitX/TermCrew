@@ -161,7 +161,7 @@ Per skill:
 
 - **Local** — pick a folder that already has `SKILL.md`.
 - **Git** — clone a repo URL into a writable root (hooks disabled).
-- **Marketplace** — browse [skills.sh](https://skills.sh) (Hot / Trending / Most viewed, search). Install runs `npx skills add … --copy` for a chosen harness; tick **global** (`-g`) to write the user root instead of the project. Same hidden setup console as agent install.
+- **Marketplace** — browse [skills.sh](https://skills.sh) (Hot / Trending / Most viewed, search). Install runs `npx skills add … --copy` for a chosen harness (`-g` = that CLI’s user root). **Global** is one shared install (`-a universal` → `~/.config/agents/skills`), not a copy into every agent. Same hidden setup console as agent install.
 
 ---
 
