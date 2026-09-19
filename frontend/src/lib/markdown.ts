@@ -22,12 +22,43 @@ export function splitFrontmatter(src: string): { fields: [string, string][]; bod
   const m = src.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { fields: [], body: src };
   const fields: [string, string][] = [];
-  for (const line of m[1].split(/\r?\n/)) {
-    const i = line.indexOf(':');
-    if (i <= 0) continue;
-    const key = line.slice(0, i).trim();
-    const value = line.slice(i + 1).trim();
-    if (key) fields.push([key, value]);
+  const lines = m[1].split(/\r?\n/);
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const colon = line.indexOf(':');
+    if (colon <= 0 || /^\s/.test(line)) {
+      i += 1;
+      continue;
+    }
+    const key = line.slice(0, colon).trim();
+    let value = line.slice(colon + 1).trim();
+    if (!key) {
+      i += 1;
+      continue;
+    }
+    if (value === '>' || value === '|' || value === '>-' || value === '|-') {
+      const chunk: string[] = [];
+      i += 1;
+      while (i < lines.length) {
+        const next = lines[i];
+        if (/^\s/.test(next)) {
+          chunk.push(next.trim());
+          i += 1;
+          continue;
+        }
+        if (next.trim() === '') {
+          i += 1;
+          continue;
+        }
+        break;
+      }
+      value = chunk.join(' ').replace(/\s+/g, ' ').trim();
+      fields.push([key, value]);
+      continue;
+    }
+    fields.push([key, value]);
+    i += 1;
   }
   return { fields, body: m[2] };
 }
@@ -39,15 +70,12 @@ export function renderMarkdown(src: string): string {
 
 export function renderSkillMarkdown(src: string): string {
   const { fields, body } = splitFrontmatter(src);
-  let head = '';
-  if (fields.length > 0) {
-    const rows = fields
-      .map(
-        ([k, v]) =>
-          `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`,
-      )
-      .join('');
-    head = `<table class="md-frontmatter"><tbody>${rows}</tbody></table>`;
-  }
+  const name = fields.find(([k]) => k.toLowerCase() === 'name')?.[1];
+  const license = fields.find(([k]) => k.toLowerCase() === 'license')?.[1];
+  const bits = [name, license].filter((v) => v && v !== '>' && v !== '|');
+  const head =
+    bits.length > 0
+      ? `<p class="md-meta">${bits.map(escapeHtml).join(' · ')}</p>`
+      : '';
   return head + renderMarkdown(body);
 }
