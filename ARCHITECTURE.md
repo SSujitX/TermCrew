@@ -318,7 +318,7 @@ Roots scanned (`build_roots`):
 
 | Scope | Path | Writable |
 | --- | --- | --- |
-| user | `~/.agents/skills` | yes |
+| user | `~/.agents/skills`, `~/.config/agents/skills` | yes |
 | user | `~/.claude/skills`, `~/.codex/skills`, `~/.cursor/skills`, `~/.config/opencode/skills`, `~/.openclaw/skills`, `~/.hermes/skills`, `~/.gemini/skills`, `~/.kiro/skills`, `~/.config/goose/skills` | yes |
 | system | `~/.codex/skills/.system`, `~/.agents/skills/.system` | **read-only** |
 | project | `{git root or workdir}/.claude/skills`, `.agents/skills`, `.cursor/skills`, `.codex/skills` | yes |
@@ -335,8 +335,8 @@ Operations and guards:
 | delete | body `confirm` must equal `"DELETE"`; path must be inside a managed root; `..` rejected |
 | install `local` | copy directories containing `SKILL.md` from a local path |
 | install `git` | `git clone --depth 1` with hooks disabled into `{root}/skill-install/<uuid>`, copy, delete temp; URL charset validated |
-| marketplace search | `curl` to `https://skills.sh/api/search?q=…` (empty query browses with `q=skill`); results cached 60 s, then sorted (`hot` = API order, `trending`/`all-time` = installs) and paged 9 |
-| marketplace install | builds `npx -y skills add <source> -y [-g] -a <agent> [-s <skill>] --copy` after charset validation, runs it in a hidden setup PTY |
+| marketplace search | `curl` to `https://skills.sh/api/search?q=…` (empty query browses with `q=skill`). Browse catalog is prefetched at startup and cached 10 min (multi-query, browse slot kept). Later searches filter that list when it matches, else hit skills.sh. Then sorted (`hot` = API order, `trending`/`all-time` = installs) and paged 9 |
+| marketplace install | builds `npx -y skills add <source> -y [-g] -a <agent> [-s <skill>] --copy`. Global is `-a universal` (one shared `~/.config/agents/skills`); a named harness is that CLI only. |
 
 ### 3.10 File system endpoints (`workdirs.rs`, `file_editor.rs`)
 
