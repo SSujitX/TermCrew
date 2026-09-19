@@ -5,7 +5,7 @@
 //! in a hidden setup PTY (same pattern as agent install).
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
@@ -19,7 +19,9 @@ use crate::worktree;
 const PREFS_FILE: &str = "skills-prefs.json";
 const MAX_PREVIEW_BYTES: usize = 256 * 1024;
 const SCAN_CACHE_TTL: Duration = Duration::from_secs(8);
-const MARKET_CACHE_TTL: Duration = Duration::from_secs(60);
+const MARKET_CACHE_TTL: Duration = Duration::from_secs(600);
+const MARKET_CACHE_MAX: usize = 24;
+const BROWSE_QUERY: &str = "skill";
 const MAX_SKILL_NAME_LEN: usize = 80;
 const CONFIRM_DELETE: &str = "DELETE";
 
@@ -289,6 +291,14 @@ fn build_roots(workdir: Option<&Path>) -> Vec<RootDef> {
             scope: "user",
             writable: true,
             path: h.join(".agents").join("skills"),
+        });
+        roots.push(RootDef {
+            id: "agents-universal",
+            label: "Global (universal)",
+            harness: "global",
+            scope: "user",
+            writable: true,
+            path: h.join(".config").join("agents").join("skills"),
         });
         roots.push(RootDef {
             id: "claude-user",
@@ -1144,10 +1154,10 @@ pub fn skills_cli_agent(harness: &str) -> Option<&'static str> {
         "cursor" | "cursor-agent" => Some("cursor"),
         "opencode" => Some("opencode"),
         "openclaw" => Some("openclaw"),
-        "gemini" => Some("gemini"),
+        "gemini" => Some("gemini-cli"),
         "goose" => Some("goose"),
-        "kiro" => Some("kiro"),
-        "global" | "agents" => None, // use --global without -a, or multi
+        "kiro" => Some("kiro-cli"),
+        "global" | "agents" => Some("universal"),
         _ => None,
     }
 }
@@ -1169,10 +1179,6 @@ pub fn marketplace_install_command(req: &MarketplaceInstallRequest) -> Result<St
     if let Some(agent) = skills_cli_agent(&req.harness) {
         parts.push("-a".into());
         parts.push(agent.to_string());
-    } else if req.harness.eq_ignore_ascii_case("global") {
-        // Install for common agents when targeting global
-        parts.push("-a".into());
-        parts.push("claude-code,codex,cursor,opencode".into());
     } else {
         return Err(format!(
             "Harness '{}' is not supported by skills CLI install yet — use Copy instead",
@@ -1197,7 +1203,7 @@ pub fn search_marketplace(
     per_page: u32,
 ) -> Result<MarketplaceSearch, String> {
     let q = query.trim();
-    let q = if q.is_empty() { "skill" } else { q };
+    let q = if q.is_empty() { BROWSE_QUERY } else { q };
     if q.len() > 120 {
         return Err("Query too long".into());
     }
@@ -1218,21 +1224,71 @@ pub fn search_marketplace(
 }
 
 struct MarketCache {
-    at: Instant,
-    query: String,
-    skills: Vec<MarketplaceSkill>,
+    entries: HashMap<String, (Instant, Vec<MarketplaceSkill>)>,
 }
 
-fn market_cache() -> &'static Mutex<Option<MarketCache>> {
-    static CACHE: OnceLock<Mutex<Option<MarketCache>>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(None))
+fn market_cache() -> &'static Mutex<MarketCache> {
+    static CACHE: OnceLock<Mutex<MarketCache>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(MarketCache { entries: HashMap::new() }))
+}
+
+fn cache_get(q: &str) -> Option<Vec<MarketplaceSkill>> {
+    let guard = market_cache().lock().ok()?;
+    let (at, skills) = guard.entries.get(q)?;
+    (at.elapsed() < MARKET_CACHE_TTL).then(|| skills.clone())
+}
+
+fn cache_put(q: String, skills: Vec<MarketplaceSkill>) {
+    let Ok(mut guard) = market_cache().lock() else {
+        return;
+    };
+    if guard.entries.len() >= MARKET_CACHE_MAX && !guard.entries.contains_key(&q) {
+        let victim = guard
+            .entries
+            .iter()
+            .filter(|(k, _)| k.as_str() != BROWSE_QUERY)
+            .min_by_key(|(_, (at, _))| *at)
+            .map(|(k, _)| k.clone());
+        if let Some(k) = victim {
+            guard.entries.remove(&k);
+        }
+    }
+    guard.entries.insert(q, (Instant::now(), skills));
+}
+
+fn filter_catalog(skills: &[MarketplaceSkill], q: &str) -> Vec<MarketplaceSkill> {
+    let needle = q.trim().to_ascii_lowercase();
+    if needle.is_empty() {
+        return skills.to_vec();
+    }
+    skills
+        .iter()
+        .filter(|s| {
+            s.name.to_ascii_lowercase().contains(&needle)
+                || s.source.to_ascii_lowercase().contains(&needle)
+                || s.skill_id.to_ascii_lowercase().contains(&needle)
+                || s.id.to_ascii_lowercase().contains(&needle)
+        })
+        .cloned()
+        .collect()
+}
+
+/// Warm the browse catalog so the Marketplace tab is a cache hit.
+pub fn prefetch_marketplace() {
+    let _ = fetch_marketplace_catalog(BROWSE_QUERY);
 }
 
 fn fetch_marketplace_catalog(q: &str) -> Result<Vec<MarketplaceSkill>, String> {
-    if let Ok(guard) = market_cache().lock() {
-        if let Some(cached) = guard.as_ref() {
-            if cached.query == q && cached.at.elapsed() < MARKET_CACHE_TTL {
-                return Ok(cached.skills.clone());
+    if let Some(hit) = cache_get(q) {
+        return Ok(hit);
+    }
+    // Search the warm browse list locally — skip a second skills.sh round-trip.
+    if q != BROWSE_QUERY {
+        if let Some(browse) = cache_get(BROWSE_QUERY) {
+            let filtered = filter_catalog(&browse, q);
+            if !filtered.is_empty() {
+                cache_put(q.to_string(), filtered.clone());
+                return Ok(filtered);
             }
         }
     }
@@ -1286,13 +1342,7 @@ fn fetch_marketplace_catalog(q: &str) -> Result<Vec<MarketplaceSkill>, String> {
             });
         }
     }
-    if let Ok(mut guard) = market_cache().lock() {
-        *guard = Some(MarketCache {
-            at: Instant::now(),
-            query: q.to_string(),
-            skills: skills.clone(),
-        });
-    }
+    cache_put(q.to_string(), skills.clone());
     Ok(skills)
 }
 
@@ -1352,8 +1402,11 @@ fn http_get_text(url: &str) -> Result<String, String> {
     let output = Command::new("curl")
         .args([
             "-fsSL",
+            "--compressed",
+            "--connect-timeout",
+            "4",
             "--max-time",
-            "20",
+            "12",
             "-H",
             "Accept: application/json",
             "--",
@@ -1441,6 +1494,22 @@ mod tests {
         assert!(cmd.contains("-s web-design"));
     }
 
+    #[test]
+    fn marketplace_global_uses_universal_agent() {
+        let cmd = marketplace_install_command(&MarketplaceInstallRequest {
+            source: "typesafe-ai/skills".into(),
+            skill: Some("typesafe-ai".into()),
+            harness: "global".into(),
+            global: Some(true),
+        })
+        .unwrap();
+        assert!(cmd.contains("-a universal"), "{cmd}");
+        assert!(!cmd.contains("-a claude-code"));
+        assert_eq!(skills_cli_agent("global"), Some("universal"));
+        assert_eq!(skills_cli_agent("gemini"), Some("gemini-cli"));
+        assert_eq!(skills_cli_agent("kiro"), Some("kiro-cli"));
+    }
+
     fn mk_market(id: &str, installs: u64) -> MarketplaceSkill {
         MarketplaceSkill {
             id: id.into(),
@@ -1483,6 +1552,30 @@ mod tests {
         assert_eq!(page2.len(), 2);
         assert!(!more);
         assert_eq!(page2[0].id, "s18");
+    }
+
+    #[test]
+    fn marketplace_filter_matches_name_and_source() {
+        let skills = vec![
+            MarketplaceSkill {
+                id: "a".into(),
+                skill_id: "typesafe-ai".into(),
+                name: "TypeSafe".into(),
+                source: "typesafe-ai/skills".into(),
+                installs: 1,
+            },
+            MarketplaceSkill {
+                id: "b".into(),
+                skill_id: "other".into(),
+                name: "Other".into(),
+                source: "acme/other".into(),
+                installs: 2,
+            },
+        ];
+        let hit = filter_catalog(&skills, "typesafe");
+        assert_eq!(hit.len(), 1);
+        assert_eq!(hit[0].skill_id, "typesafe-ai");
+        assert!(filter_catalog(&skills, "zzzz").is_empty());
     }
 
     #[test]
