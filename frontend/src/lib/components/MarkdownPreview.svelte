@@ -28,6 +28,7 @@
   }
 </script>
 
+<div class="flex flex-col flex-1 min-h-0 overflow-hidden">
 <div class="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-line bg-ink-850">
   <div class="flex items-center border border-line rounded-sm p-0.5 bg-ink-950">
     <button
@@ -83,3 +84,4 @@
     Preview truncated
   </div>
 {/if}
+</div>
