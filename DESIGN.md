@@ -115,7 +115,7 @@ The Agents modal lists the catalogue with Ready/Missing state, resolved path (co
 
 #### Manage skills
 
-Two tabs. **Installed** lists every skill found across harness roots with harness, scope (user/project) and Shown/Hidden state; filters per harness; grid/list; actions Show/Hide, Preview (read-only overlay, truncation notice), Copy (choose a writable root), Open folder, Delete (Delete → Sure? → Confirm DELETE). An *Install* panel accepts a local folder or git URL plus target root and optional name. **Marketplace** opens on a 9-skill grid (Hot / Trending / Most viewed, next/prev pages), searches skills.sh, lets the user choose a target harness, and runs the `npx skills add …` install in a setup console showing the exact command.
+Two tabs. **Installed** lists every skill found across harness roots with harness, scope (user/project) and Shown/Hidden state; filters per harness; grid/list; actions Show/Hide, Preview (read-only overlay, truncation notice), Copy (choose a writable root), Open folder, Delete (Delete → Sure? → Confirm DELETE). An *Install* panel accepts a local folder or git URL plus target root and optional name. **Marketplace** opens on a 9-skill grid (Hot / Trending / Most viewed, next/prev pages). Browse is prefetched; typing filters the warm catalog (skills.sh only on a miss). Choose a harness (Global = one `universal` root; Claude/Codex/… = that CLI only), then `npx skills add …` in a setup console. Preview shows the markdown body (name · license as a one-line meta), not a YAML table.
 
 #### Edit a file
 
