@@ -77,6 +77,7 @@
   let marketHasMore = $state(false);
   let marketResults = $state<MarketplaceSkill[]>([]);
   let marketSearching = $state(false);
+  let marketFetchGen = $state(0);
   let marketHarness = $state('global');
   let marketInstallFor = $state<string | null>(null);
 
@@ -346,20 +347,23 @@
   }
 
   async function loadMarket(q: string, view: string, page: number) {
+    const gen = ++marketFetchGen;
     marketSearching = true;
     actionError = null;
     try {
       const res = await searchSkillsMarketplace(q, { view, page, perPage: 9 });
+      if (gen !== marketFetchGen) return;
       marketResults = res.skills;
       marketTotal = res.total;
       marketHasMore = res.has_more;
     } catch (err) {
+      if (gen !== marketFetchGen) return;
       actionError = err instanceof Error ? err.message : String(err);
       marketResults = [];
       marketTotal = 0;
       marketHasMore = false;
     } finally {
-      marketSearching = false;
+      if (gen === marketFetchGen) marketSearching = false;
     }
   }
 
@@ -408,6 +412,19 @@
     if (!isOpen) return;
     void workdir;
     void loadCatalog(true);
+    void searchSkillsMarketplace('', { view: 'hot', page: 0, perPage: 9 });
+  });
+
+  $effect(() => {
+    if (!isOpen || tab !== 'marketplace') return;
+    const q = marketQuery.trim();
+    const t = setTimeout(() => {
+      if (marketCommitted !== q) {
+        marketCommitted = q;
+        marketPage = 0;
+      }
+    }, 180);
+    return () => clearTimeout(t);
   });
 
   $effect(() => {
@@ -521,7 +538,7 @@
     ></div>
 
     <div
-      class="bezel relative z-10 bg-ink-900 border border-line-strong rounded-sm w-full max-w-5xl overflow-hidden flex flex-col max-h-[88vh] toast-enter"
+      class="bezel relative z-10 bg-ink-900 border border-line-strong rounded-sm w-full max-w-5xl h-[88vh] overflow-hidden flex flex-col toast-enter"
       role="dialog"
       aria-modal="true"
       tabindex="-1"
@@ -588,6 +605,7 @@
       </div>
 
       {#if tab === 'installed'}
+      <div class="flex-1 min-h-0 flex flex-col min-w-0">
         <div class="px-5 py-3 border-b border-line bg-ink-850/60 flex flex-col gap-2.5">
           <div class="flex items-center gap-2">
             <div class="relative flex-1 min-w-0">
@@ -811,7 +829,9 @@
             </button>
           </div>
         </div>
+      </div>
       {:else}
+      <div class="flex-1 min-h-0 flex flex-col min-w-0">
         <div class="px-5 py-3 border-b border-line bg-ink-850/60 flex flex-col gap-2.5">
           <div class="flex flex-wrap items-center gap-3">
             <div class="relative flex-1 min-w-[200px] max-w-lg">
@@ -936,11 +956,12 @@
             </div>
           </div>
         {/if}
+      </div>
       {/if}
 
       {#if preview}
-        <div class="absolute inset-0 z-20 flex items-center justify-center p-6 bg-ink-950/80">
-          <div class="bezel bg-ink-900 border border-line-strong rounded-sm w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+        <div class="absolute inset-0 z-20 flex flex-col p-4 bg-ink-950/80">
+          <div class="bezel bg-ink-900 border border-line-strong rounded-sm flex-1 min-h-0 w-full flex flex-col overflow-hidden">
             <div class="px-4 py-2.5 border-b border-line flex items-center justify-between bg-ink-850">
               <div class="min-w-0">
                 <div class="text-[11px] font-mono font-bold text-bone uppercase tracking-wider">
@@ -958,7 +979,9 @@
               </button>
             </div>
             {#key preview.path}
-              <MarkdownPreview content={preview.content} truncated={preview.truncated} />
+              <div class="flex-1 min-h-0 flex flex-col">
+                <MarkdownPreview content={preview.content} truncated={preview.truncated} />
+              </div>
             {/key}
           </div>
         </div>
