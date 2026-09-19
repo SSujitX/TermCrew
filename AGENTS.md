@@ -167,3 +167,5 @@ When you change behaviour, add or update a test at the same level (unit for pure
 - Codex uninstall/remove targets the CLI only, not the ChatGPT desktop app.
 - Launcher folder starts empty; the user must pick a recent, type a path, or Browse. Empty path does not fall back to the backend cwd.
 - Roo Code and Zoo Code are not registered agents (Roo's GitHub is archived; Zoo was added then fully removed).
+- Marketplace Global install is one shared `npx skills add … -g -a universal` into `~/.config/agents/skills`, not a copy into every agent. Per-agent `-a` flags are repeatable; comma-separated agent lists fail on the current CLI.
+- Node (pane) display `label` is editable separately from machine `role` (Lead/Review/…).
