@@ -164,6 +164,8 @@ async fn main() {
         std::process::exit(0);
     });
 
+    tokio::task::spawn_blocking(skills::prefetch_marketplace);
+
     if let Err(e) = axum::serve(listener, app).await {
         error!("Server encountered an error: {}", e);
     }
